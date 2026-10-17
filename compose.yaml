@@ -1,0 +1,88 @@
+
+services:
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - ecommerce-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  user-service:
+    image: ecommerce-user-service:v1
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      PORT: "3001"
+      MONGODB_URI: mongodb://mongodb:27017/ecommerce_users
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - ecommerce-net
+
+  product-service:
+    image: ecommerce-product-service:v1
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      PORT: "3002"
+      MONGODB_URI: mongodb://mongodb:27017/ecommerce_products
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - ecommerce-net
+
+  cart-service:
+    image: ecommerce-cart-service:v1
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      PORT: "3003"
+      MONGODB_URI: mongodb://mongodb:27017/ecommerce_carts
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - ecommerce-net
+
+  order-service:
+    image: ecommerce-order-service:v1
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      PORT: "3004"
+      MONGODB_URI: mongodb://mongodb:27017/ecommerce_orders
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - ecommerce-net
+
+  frontend:
+    image: ecommerce-frontend:v1
+    platform: linux/amd64
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      - user-service
+      - product-service
+      - cart-service
+      - order-service
+    networks:
+      - ecommerce-net
+
+networks:
+  ecommerce-net:
+    driver: bridge
+
+volumes:
+  mongo_data:
